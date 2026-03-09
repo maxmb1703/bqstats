@@ -295,7 +295,7 @@ select{background:var(--s2);border:1px solid var(--border);color:var(--text);pad
 <div id="modal-rivalimport" class="modal-backdrop hidden" onclick="closeModal('modal-rivalimport',event)">
   <div class="modal" style="max-width:520px" onclick="event.stopPropagation()">
     <h2 id="rivalImportTitle">Afegir Equip Rival</h2>
-    <p style="font-family:var(--font-m);font-size:11px;color:var(--muted);margin-bottom:16px;line-height:1.6">Selecciona un o més JSONs de partits on aparegui l'equip rival. S'acumularan les estadístiques de totes les jugadores.</p>
+    <p style="font-family:var(--font-m);font-size:11px;color:var(--muted);margin-bottom:16px;line-height:1.6">Selecciona un o més JSONs de partits on aparegui l’equip rival. S’acumularan les estadístiques de totes les jugadores.</p>
     <div class="import-zone" id="rivalImportZone"><div class="iz-icon">🔍</div><div class="iz-label">Arrossega els JSONs aquí</div><div class="iz-sub">o fes clic per seleccionar (pots triar múltiples)</div><input type="file" accept=".json" id="rivalImportFileInput" multiple></div>
     <div id="rivalMatchPreview"></div>
     <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal('modal-rivalimport')">Cancel·lar</button><button class="btn btn-primary" id="rivalImportConfirmBtn" onclick="confirmRivalImport()" disabled>Afegir</button></div>
@@ -552,7 +552,7 @@ function showRivalPreview(){
   prev.innerHTML='<div class="match-preview">'+
     '<div class="mp-title">'+pendingRivalJSONs.length+' PARTITS · '+teamNames.size+' EQUIPS DETECTATS</div>'+
     rows+
-    '<div class="mp-ok" style="margin-top:8px">✓ S'afegiran o actualitzaran tots els equips</div>'+
+    '<div class="mp-ok" style="margin-top:8px">✓ S’afegiran o actualitzaran tots els equips</div>'+
     '</div>';
   btn.disabled=false;
 }
