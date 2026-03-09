@@ -396,16 +396,25 @@ function renderRivalsList(){
   const rivals=team.rivals||[];
   const el=document.getElementById('rivalsList');
   if(!rivals.length){el.innerHTML='<div class="empty-state"><div class="empty-icon">🔍</div><h3>Cap Equip Rival</h3><p>Afegeix equips rivals per fer scouting de les seves jugadores.</p></div>';return;}
-  el.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px">'+rivals.map(r=>{
+  const g=document.createElement('div');
+  g.style.cssText='display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px';
+  rivals.forEach(r=>{
     const nMatches=(r.matches||[]).length;
     const nPlayers=new Set((r.matches||[]).flatMap(m=>(m.players||[]).map(p=>p.name))).size;
-    return '<div class="team-card" style="--team-color:#5c9aff" onclick="goRival(''+currentTeamId+'',''+r.id+'')">'+
-      '<button class="team-card-del" onclick="event.stopPropagation();deleteRival(''+r.id+'')">×</button>'+
-      '<div class="team-card-icon">🔍</div>'+
-      '<div class="team-card-name">'+r.name+'</div>'+
-      '<div class="team-card-meta"><span>📋 '+nMatches+' partits</span><span>👥 '+nPlayers+' jugadores</span></div>'+
-      '</div>';
-  }).join('')+'</div>';
+    const card=document.createElement('div');
+    card.className='team-card';card.style.setProperty('--team-color','#5c9aff');
+    const delBtn=document.createElement('button');
+    delBtn.className='team-card-del';delBtn.textContent='×';
+    delBtn.onclick=e=>{e.stopPropagation();deleteRival(r.id);};
+    const icon=document.createElement('div');icon.className='team-card-icon';icon.textContent='🔍';
+    const name=document.createElement('div');name.className='team-card-name';name.textContent=r.name;
+    const meta=document.createElement('div');meta.className='team-card-meta';
+    meta.innerHTML='<span>📋 '+nMatches+' partits</span><span>👥 '+nPlayers+' jugadores</span>';
+    card.appendChild(delBtn);card.appendChild(icon);card.appendChild(name);card.appendChild(meta);
+    card.addEventListener('click',()=>goRival(currentTeamId,r.id));
+    g.appendChild(card);
+  });
+  el.innerHTML='';el.appendChild(g);
 }
 function renderRivalPage(tid,rid){
   const rival=getRival(tid,rid);
@@ -431,17 +440,22 @@ function renderRivalStats(){
     const fc=s.faults>=4*s.gp?'hi':s.faults>=2*s.gp?'mid':'lo';
     const ini=s.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
     tp+=s.pts;tv+=s.val;tm+=s.min;tla+=s.tla;tlm+=s.tlm;t2a+=s.t2a;t2m+=s.t2m;t3a+=s.t3a;t3m+=s.t3m;tf+=s.faults;
-    return '<tr><td><div class="player-cell"><div class="player-avatar" style="color:var(--blue)">'+ini+'</div><div class="player-info"><div class="player-name">'+s.name+'</div><div class="player-dorsal">#'+s.dorsal+'</div></div></div></td>'+
-      '<td><span class="gp-badge">'+s.gp+'</span></td><td>'+s.min+"'</td><td class="stat-pts">"+s.pts+'</td>'+
+    const vSign=s.val>0?'+':'', iSign=s.inout>0?'+':'';
+    return '<tr>'+
+      '<td><div class="player-cell"><div class="player-avatar" style="color:var(--blue)">'+ini+'</div>'+
+      '<div class="player-info"><div class="player-name">'+s.name+'</div><div class="player-dorsal">#'+s.dorsal+'</div></div></div></td>'+
+      '<td><span class="gp-badge">'+s.gp+"</span></td><td>"+s.min+"'</td>"+
+      '<td class="stat-pts">'+s.pts+'</td>'+
       '<td style="font-family:var(--font-m);font-size:12px">'+ppp+'</td>'+
-      '<td class="'+vc+'">'+(s.val>0?'+':'')+s.val+'</td>'+
-      '<td class="'+ic+'">'+(s.inout>0?'+':'')+s.inout+'</td>'+
+      '<td class="'+vc+'">'+vSign+s.val+'</td>'+
+      '<td class="'+ic+'">'+iSign+s.inout+'</td>'+
       '<td class="shot-stat">'+shotStr(s.tlm,s.tla)+'</td>'+
       '<td class="shot-stat">'+shotStr(s.t2m,s.t2a)+'</td>'+
       '<td class="shot-stat">'+shotStr(s.t3m,s.t3a)+'</td>'+
       '<td><span class="faults-badge '+fc+'">'+s.faults+'</span></td></tr>';
   }).join('')+
-  '<tr class="totals-row"><td>TOTAL</td><td></td><td>'+tm+"'</td><td class="stat-pts">"+tp+'</td><td></td>'+
+  '<tr class="totals-row"><td>TOTAL</td><td></td><td>'+tm+"'</td>"+
+  '<td class="stat-pts">'+tp+'</td><td></td>'+
   '<td class="'+(tv>=0?'stat-val-pos':'stat-val-neg')+'">'+(tv>=0?'+':'')+tv+'</td><td></td>'+
   '<td class="shot-stat">'+shotStr(tlm,tla)+'</td><td class="shot-stat">'+shotStr(t2m,t2a)+'</td>'+
   '<td class="shot-stat">'+shotStr(t3m,t3a)+'</td><td><span class="faults-badge lo">'+tf+'</span></td></tr>';
@@ -504,7 +518,7 @@ function readRivalFiles(files){
 }
 function showRivalPreview(){
   const prev=document.getElementById('rivalMatchPreview'),btn=document.getElementById('rivalImportConfirmBtn');
-  if(!pendingRivalJSONs.length){prev.innerHTML='<div class="match-preview"><div class="mp-warn">⚠ No s'han trobat partits vàlids.</div></div>';btn.disabled=true;return;}
+  if(!pendingRivalJSONs.length){prev.innerHTML='<div class="match-preview"><div class="mp-warn">⚠ No s\'han trobat partits v&agrave;lids.</div></div>';btn.disabled=true;return;}
   const scorePts=t=>(t?.players||[]).reduce((s,p)=>s+p.data.score,0);
   // Group by rival team name
   const groups={};
@@ -555,13 +569,21 @@ else if(type==='rival'){
     '<h1 style="font-size:20px">🔍 Scouting: '+rival.name+'</h1>'+
     '<h2 style="font-size:13px;color:#555;margin-bottom:16px">'+(rival.matches||[]).length+' partits analitzats</h2>'+
     '<table><thead><tr><th>Jugadora</th><th>PJ</th><th>Min</th><th>PTS</th><th>PPP</th><th>Val</th><th>+/-</th><th>TL</th><th>T2</th><th>T3</th><th>F</th></tr></thead><tbody>'+
-    players.map(s=>'<tr><td>#'+s.dorsal+' '+s.name+'</td><td>'+s.gp+'</td><td>'+s.min+"'</td><td style="font-weight:700">"+s.pts+'</td><td>'+(s.gp>0?(s.pts/s.gp).toFixed(1):'—')+'</td>'+
-      '<td style="color:'+(s.val>=0?'#1a7a3c':'#a00')+'">'+(s.val>0?'+':'')+s.val+'</td>'+
-      '<td style="color:'+(s.inout>=0?'#1a7a3c':'#a00')+'">'+(s.inout>0?'+':'')+s.inout+'</td>'+
-      '<td>'+(s.tla>0?s.tlm+'/'+s.tla+' ('+Math.round(100*s.tlm/s.tla)+'%)':'—')+'</td>'+
-      '<td>'+(s.t2a>0?s.t2m+'/'+s.t2a+' ('+Math.round(100*s.t2m/s.t2a)+'%)':'—')+'</td>'+
-      '<td>'+(s.t3a>0?s.t3m+'/'+s.t3a+' ('+Math.round(100*s.t3m/s.t3a)+'%)':'—')+'</td>'+
-      '<td>'+s.faults+'</td></tr>').join('')+
+    players.map(s=>{
+      const vc2=s.val>=0?'#1a7a3c':'#a00', ic2=s.inout>=0?'#1a7a3c':'#a00';
+      const ppp2=s.gp>0?(s.pts/s.gp).toFixed(1):'—';
+      const vs=s.val>0?'+':'', is=s.inout>0?'+':'';
+      return '<tr><td>#'+s.dorsal+' '+s.name+'</td><td>'+s.gp+'</td>'+
+        '<td>'+s.min+"'</td>"+
+        '<td style="font-weight:700">'+s.pts+'</td>'+
+        '<td>'+ppp2+'</td>'+
+        '<td style="color:'+vc2+'">'+vs+s.val+'</td>'+
+        '<td style="color:'+ic2+'">'+is+s.inout+'</td>'+
+        '<td>'+(s.tla>0?s.tlm+'/'+s.tla+' ('+Math.round(100*s.tlm/s.tla)+'%)':'—')+'</td>'+
+        '<td>'+(s.t2a>0?s.t2m+'/'+s.t2a+' ('+Math.round(100*s.t2m/s.t2a)+'%)':'—')+'</td>'+
+        '<td>'+(s.t3a>0?s.t3m+'/'+s.t3a+' ('+Math.round(100*s.t3m/s.t3a)+'%)':'—')+'</td>'+
+        '<td>'+s.faults+'</td></tr>';
+    }).join('')+
     '</tbody></table></body></html>');
   w.document.close();
 }};
