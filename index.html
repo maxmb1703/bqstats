@@ -3,6 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#080810">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BàsquetStats">
+<link rel="apple-touch-icon" href="icon-192.png">
 <title>BàsquetStats · Gestor d'Equips</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -677,15 +683,45 @@ window.exportPDF = function(type,teamId,matchId) {
     const w=window.open('','_blank'); const dt=match.date?new Date(match.date).toLocaleDateString('ca-ES',{day:'numeric',month:'long',year:'numeric'}):'—';
     function prow(p){return `<tr style="border-bottom:1px solid #eee"><td style="padding:5px 8px;text-align:left">${p.starting?'●':''} #${p.dorsal} ${p.name}</td><td>${p.timePlayed}'</td><td style="font-weight:700">${p.pts}</td><td style="color:${p.val>=0?'#1a7a3c':'#a00'}">${p.val>0?'+':''}${p.val}</td><td style="color:${p.inout>=0?'#1a7a3c':'#a00'}">${p.inout>0?'+':''}${p.inout}</td><td>${p.tlm}/${p.tla}</td><td>${p.t2m}/${p.t2a}</td><td>${p.t3m}/${p.t3a}</td><td>${p.faults}</td></tr>`;}
     function ptbl(pl,name,score,c){if(!pl||!pl.length)return '';return `<h3 style="font-size:14px;margin:20px 0 8px;color:${c}">${name} — ${score} pts</h3><table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:#f5f5f5"><th style="padding:5px 8px;text-align:left">Jugadora</th><th>Min</th><th>PTS</th><th>Val</th><th>+/-</th><th>TL</th><th>T2</th><th>T3</th><th>F</th></tr></thead><tbody>${pl.map(prow).join('')}</tbody></table>`;}
-    w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${team.name} vs ${match.rivalName}</title><style>body{font-family:Arial,sans-serif;padding:24px;color:#111;font-size:12px}@media print{button{display:none}}</style></head><body><button onclick="window.print()" style="float:right;padding:8px 16px;background:#f0c040;border:none;cursor:pointer;font-weight:700;border-radius:4px">🖨 Imprimir</button><h1 style="font-size:20px">${team.name} vs ${match.rivalName}</h1><h2 style="font-size:14px;color:#555;margin-bottom:16px">📅 ${dt} · ${match.teamScore>match.rivalScore?'VICTÒRIA':'DERROTA'} ${match.teamScore}–${match.rivalScore}</h2>${ptbl(match.players,team.name,match.teamScore,color)}${ptbl(match.rivalPlayers,match.rivalName,match.rivalScore,'#555')}</body></html>`);w.document.close();
+    w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${team.name} vs ${match.rivalName}</title><style>body{font-family:Arial,sans-serif;padding:24px;color:#111;font-size:12px}@media print{button{display:none}}</style></head><body><button onclick="window.print()" style="float:right;padding:8px 16px;background:#f0c040;border:none;cursor:pointer;font-weight:700;border-radius:4px">🖨 Imprimir</button><h1 style="font-size:20px">${team.name} vs ${match.rivalName}</h1><h2 style="font-size:14px;color:#555;margin-bottom:16px">📅 ${dt} · ${match.teamScore>match.rivalScore?'VICTÒRIA':'DERROTA'} ${match.teamScore}–${match.rivalScore}</h2>${ptbl(match.players,team.name,match.teamScore,color)}${ptbl(match.rivalPlayers,match.rivalName,match.rivalScore,'#555')}
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/bqstats/sw.js')
+      .then(r => console.log('SW registered'))
+      .catch(e => console.log('SW error', e));
+  });
+}
+</script>
+</body></html>`);w.document.close();
   } else if(type==='season'){
     const players=buildPlayerStats(team,'all').sort((a,b)=>b.pts-a.pts); const w=window.open('','_blank');
-    w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Temporada ${team.name}</title><style>body{font-family:Arial,sans-serif;padding:24px;color:#111;font-size:11px}table{width:100%;border-collapse:collapse}th{background:#f0c040;padding:6px 8px;font-size:10px}th:first-child{text-align:left}td{padding:5px 8px;border-bottom:1px solid #eee;text-align:center}td:first-child{text-align:left}@media print{button{display:none}}</style></head><body><button onclick="window.print()" style="float:right;padding:8px 16px;background:#f0c040;border:none;cursor:pointer;font-weight:700;border-radius:4px">🖨 Imprimir</button><h1 style="font-size:20px">📊 Estadístiques de Temporada</h1><h2 style="font-size:13px;color:#555;margin-bottom:16px">${team.name} · ${(team.matches||[]).length} Partits</h2><table><thead><tr><th>Jugadora</th><th>PJ</th><th>Min</th><th>PTS</th><th>PPP</th><th>Val</th><th>+/-</th><th>TL</th><th>T2</th><th>T3</th><th>F</th></tr></thead><tbody>${players.map(s=>`<tr><td>#${s.dorsal} ${s.name}</td><td>${s.gp}</td><td>${s.min}'</td><td style="font-weight:700">${s.pts}</td><td>${s.gp>0?(s.pts/s.gp).toFixed(1):'—'}</td><td style="color:${s.val>=0?'#1a7a3c':'#a00'}">${s.val>0?'+':''}${s.val}</td><td style="color:${s.inout>=0?'#1a7a3c':'#a00'}">${s.inout>0?'+':''}${s.inout}</td><td>${s.tla>0?`${s.tlm}/${s.tla} (${Math.round(100*s.tlm/s.tla)}%)`:'—'}</td><td>${s.t2a>0?`${s.t2m}/${s.t2a} (${Math.round(100*s.t2m/s.t2a)}%)`:'—'}</td><td>${s.t3a>0?`${s.t3m}/${s.t3a} (${Math.round(100*s.t3m/s.t3a)}%)`:'—'}</td><td>${s.faults}</td></tr>`).join('')}</tbody></table></body></html>`);w.document.close();
+    w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Temporada ${team.name}</title><style>body{font-family:Arial,sans-serif;padding:24px;color:#111;font-size:11px}table{width:100%;border-collapse:collapse}th{background:#f0c040;padding:6px 8px;font-size:10px}th:first-child{text-align:left}td{padding:5px 8px;border-bottom:1px solid #eee;text-align:center}td:first-child{text-align:left}@media print{button{display:none}}</style></head><body><button onclick="window.print()" style="float:right;padding:8px 16px;background:#f0c040;border:none;cursor:pointer;font-weight:700;border-radius:4px">🖨 Imprimir</button><h1 style="font-size:20px">📊 Estadístiques de Temporada</h1><h2 style="font-size:13px;color:#555;margin-bottom:16px">${team.name} · ${(team.matches||[]).length} Partits</h2><table><thead><tr><th>Jugadora</th><th>PJ</th><th>Min</th><th>PTS</th><th>PPP</th><th>Val</th><th>+/-</th><th>TL</th><th>T2</th><th>T3</th><th>F</th></tr></thead><tbody>${players.map(s=>`<tr><td>#${s.dorsal} ${s.name}</td><td>${s.gp}</td><td>${s.min}'</td><td style="font-weight:700">${s.pts}</td><td>${s.gp>0?(s.pts/s.gp).toFixed(1):'—'}</td><td style="color:${s.val>=0?'#1a7a3c':'#a00'}">${s.val>0?'+':''}${s.val}</td><td style="color:${s.inout>=0?'#1a7a3c':'#a00'}">${s.inout>0?'+':''}${s.inout}</td><td>${s.tla>0?`${s.tlm}/${s.tla} (${Math.round(100*s.tlm/s.tla)}%)`:'—'}</td><td>${s.t2a>0?`${s.t2m}/${s.t2a} (${Math.round(100*s.t2m/s.t2a)}%)`:'—'}</td><td>${s.t3a>0?`${s.t3m}/${s.t3a} (${Math.round(100*s.t3m/s.t3a)}%)`:'—'}</td><td>${s.faults}</td></tr>`).join('')}</tbody></table>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/bqstats/sw.js')
+      .then(r => console.log('SW registered'))
+      .catch(e => console.log('SW error', e));
+  });
+}
+</script>
+</body></html>`);w.document.close();
   } else if(type==='player'){
     const pname=currentPlayerName; if(!pname) return; const all=buildPlayerStats(team,'all'),s=all.find(p=>p.name===pname); if(!s) return;
     const history=[];(team.matches||[]).forEach(m=>{const p=(m.players||[]).find(p=>p.name===pname);if(p)history.push({match:m,p});});
     const ppp=s.gp>0?(s.pts/s.gp).toFixed(1):'—'; const w=window.open('','_blank');
-    w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Fitxa ${pname}</title><style>body{font-family:Arial,sans-serif;padding:24px;color:#111;font-size:12px}.cards{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:20px}.card{border:1px solid #ddd;border-radius:6px;padding:10px 16px;text-align:center;min-width:90px}.card-val{font-size:24px;font-weight:700;color:${color}}.card-lbl{font-size:9px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-top:2px}table{width:100%;border-collapse:collapse;font-size:11px}th{background:#f0c040;padding:6px 8px;font-size:10px}th:first-child{text-align:left}td{padding:5px 8px;border-bottom:1px solid #eee;text-align:center}td:first-child{text-align:left}@media print{button{display:none}}</style></head><body><button onclick="window.print()" style="float:right;padding:8px 16px;background:#f0c040;border:none;cursor:pointer;font-weight:700;border-radius:4px">🖨 Imprimir</button><h1 style="font-size:22px">#${s.dorsal} ${pname}</h1><h2 style="font-size:13px;color:#555;margin-bottom:16px">${team.name} · ${s.gp} Partits jugats</h2><div class="cards"><div class="card"><div class="card-val">${s.pts}</div><div class="card-lbl">PTS totals</div></div><div class="card"><div class="card-val">${ppp}</div><div class="card-lbl">Punts/Partit</div></div><div class="card"><div class="card-val" style="color:${s.val>=0?'#1a7a3c':'#a00'}">${s.val>0?'+':''}${s.val}</div><div class="card-lbl">Valoració</div></div><div class="card"><div class="card-val">${s.min}'</div><div class="card-lbl">Minuts</div></div><div class="card"><div class="card-val">${s.tla>0?Math.round(100*s.tlm/s.tla)+'%':'—'}</div><div class="card-lbl">% TL</div></div><div class="card"><div class="card-val">${s.t2a>0?Math.round(100*s.t2m/s.t2a)+'%':'—'}</div><div class="card-lbl">% T2</div></div><div class="card"><div class="card-val">${s.t3a>0?Math.round(100*s.t3m/s.t3a)+'%':'—'}</div><div class="card-lbl">% T3</div></div></div><table><thead><tr><th>Partit</th><th>Data</th><th>Min</th><th>PTS</th><th>Val</th><th>+/-</th><th>TL</th><th>T2</th><th>T3</th><th>F</th></tr></thead><tbody>${history.map(({match,p})=>{const dt=match.date?new Date(match.date).toLocaleDateString('ca-ES',{day:'numeric',month:'short'}):'—';return `<tr><td>vs ${match.rivalName}</td><td>${dt}</td><td>${p.timePlayed}'</td><td style="font-weight:700">${p.pts}</td><td style="color:${p.val>=0?'#1a7a3c':'#a00'}">${p.val>0?'+':''}${p.val}</td><td style="color:${p.inout>=0?'#1a7a3c':'#a00'}">${p.inout>0?'+':''}${p.inout}</td><td>${p.tlm}/${p.tla}</td><td>${p.t2m}/${p.t2a}</td><td>${p.t3m}/${p.t3a}</td><td>${p.faults}</td></tr>`;}).join('')}</tbody></table></body></html>`);w.document.close();
+    w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Fitxa ${pname}</title><style>body{font-family:Arial,sans-serif;padding:24px;color:#111;font-size:12px}.cards{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:20px}.card{border:1px solid #ddd;border-radius:6px;padding:10px 16px;text-align:center;min-width:90px}.card-val{font-size:24px;font-weight:700;color:${color}}.card-lbl{font-size:9px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-top:2px}table{width:100%;border-collapse:collapse;font-size:11px}th{background:#f0c040;padding:6px 8px;font-size:10px}th:first-child{text-align:left}td{padding:5px 8px;border-bottom:1px solid #eee;text-align:center}td:first-child{text-align:left}@media print{button{display:none}}</style></head><body><button onclick="window.print()" style="float:right;padding:8px 16px;background:#f0c040;border:none;cursor:pointer;font-weight:700;border-radius:4px">🖨 Imprimir</button><h1 style="font-size:22px">#${s.dorsal} ${pname}</h1><h2 style="font-size:13px;color:#555;margin-bottom:16px">${team.name} · ${s.gp} Partits jugats</h2><div class="cards"><div class="card"><div class="card-val">${s.pts}</div><div class="card-lbl">PTS totals</div></div><div class="card"><div class="card-val">${ppp}</div><div class="card-lbl">Punts/Partit</div></div><div class="card"><div class="card-val" style="color:${s.val>=0?'#1a7a3c':'#a00'}">${s.val>0?'+':''}${s.val}</div><div class="card-lbl">Valoració</div></div><div class="card"><div class="card-val">${s.min}'</div><div class="card-lbl">Minuts</div></div><div class="card"><div class="card-val">${s.tla>0?Math.round(100*s.tlm/s.tla)+'%':'—'}</div><div class="card-lbl">% TL</div></div><div class="card"><div class="card-val">${s.t2a>0?Math.round(100*s.t2m/s.t2a)+'%':'—'}</div><div class="card-lbl">% T2</div></div><div class="card"><div class="card-val">${s.t3a>0?Math.round(100*s.t3m/s.t3a)+'%':'—'}</div><div class="card-lbl">% T3</div></div></div><table><thead><tr><th>Partit</th><th>Data</th><th>Min</th><th>PTS</th><th>Val</th><th>+/-</th><th>TL</th><th>T2</th><th>T3</th><th>F</th></tr></thead><tbody>${history.map(({match,p})=>{const dt=match.date?new Date(match.date).toLocaleDateString('ca-ES',{day:'numeric',month:'short'}):'—';return `<tr><td>vs ${match.rivalName}</td><td>${dt}</td><td>${p.timePlayed}'</td><td style="font-weight:700">${p.pts}</td><td style="color:${p.val>=0?'#1a7a3c':'#a00'}">${p.val>0?'+':''}${p.val}</td><td style="color:${p.inout>=0?'#1a7a3c':'#a00'}">${p.inout>0?'+':''}${p.inout}</td><td>${p.tlm}/${p.tla}</td><td>${p.t2m}/${p.t2a}</td><td>${p.t3m}/${p.t3a}</td><td>${p.faults}</td></tr>`;}).join('')}</tbody></table>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/bqstats/sw.js')
+      .then(r => console.log('SW registered'))
+      .catch(e => console.log('SW error', e));
+  });
+}
+</script>
+</body></html>`);w.document.close();
   }
 };
 
@@ -743,6 +779,16 @@ document.getElementById('editTeamName').addEventListener('keydown',e=>{if(e.key=
 let toastTimer;
 window.toast = function(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2500);};
 
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/bqstats/sw.js')
+      .then(r => console.log('SW registered'))
+      .catch(e => console.log('SW error', e));
+  });
+}
 </script>
 </body>
 </html>
