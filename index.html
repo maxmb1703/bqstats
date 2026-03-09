@@ -503,84 +503,95 @@ rivalImportZone.addEventListener('dragleave',()=>rivalImportZone.classList.remov
 rivalImportZone.addEventListener('drop',e=>{e.preventDefault();rivalImportZone.classList.remove('drag');if(e.dataTransfer.files.length)readRivalFiles(Array.from(e.dataTransfer.files))});
 rivalImportFile.addEventListener('change',e=>{if(e.target.files.length)readRivalFiles(Array.from(e.target.files))});
 function readRivalFiles(files){
-  pendingRivalJSONs=[];let done=0;
+  pendingRivalJSONs=[];
+  let done=0;
   files.forEach(file=>{
     const r=new FileReader();
     r.onload=e=>{
       try{
         const data=JSON.parse(e.target.result);
         const jsonTeams=data.teams||[];
-        if(jsonTeams.length<2){done++;if(done===files.length)showRivalPreview();return;}
-        const myTeam=getTeam(currentTeamId);
-        const myName=myTeam.name.toLowerCase();
-        let rivalTeam=null,myMatchTeam=null,myIsLocal=false,foundMine=false;
-        // Try to find my team first
-        for(let i=0;i<jsonTeams.length;i++){
-          const jname=(jsonTeams[i].name||'').toLowerCase();
-          if(myName.split(/\s+/).filter(w=>w.length>2).some(w=>jname.includes(w))){
-            myMatchTeam=jsonTeams[i];myIsLocal=(i===0);rivalTeam=jsonTeams[1-i];foundMine=true;break;
-          }
+        if(jsonTeams.length>=2){
+          // Always add BOTH teams from every JSON
+          pendingRivalJSONs.push({data, teams: jsonTeams});
         }
-        // If adding to existing rival, try to match that team
-        if(!foundMine&&rivalImportTargetId){
-          const existRival=getRival(currentTeamId,rivalImportTargetId);
-          const exName=(existRival.name||'').toLowerCase();
-          for(let i=0;i<jsonTeams.length;i++){
-            const jname=(jsonTeams[i].name||'').toLowerCase();
-            if(exName.split(/\s+/).filter(w=>w.length>2).some(w=>jname.includes(w))){
-              rivalTeam=jsonTeams[i];myMatchTeam=jsonTeams[1-i];foundMine=true;break;
-            }
-          }
-        }
-        // Fallback: if my team not found at all, treat team[0] as rival (pure scouting)
-        if(!rivalTeam){rivalTeam=jsonTeams[0];myMatchTeam=jsonTeams[1];}
-        pendingRivalJSONs.push({data,rivalTeam,myMatchTeam,myIsLocal:false});
       }catch(err){}
       done++;
-      if(done===files.length)showRivalPreview();
+      if(done===files.length) showRivalPreview();
     };
     r.readAsText(file);
   });
 }
 function showRivalPreview(){
   const prev=document.getElementById('rivalMatchPreview'),btn=document.getElementById('rivalImportConfirmBtn');
-  if(!pendingRivalJSONs.length){prev.innerHTML='<div class="match-preview"><div class="mp-warn">⚠ No s\'han trobat partits v&agrave;lids.</div></div>';btn.disabled=true;return;}
-  const scorePts=t=>(t?.players||[]).reduce((s,p)=>s+p.data.score,0);
-  // Group by rival team name
-  const groups={};
-  pendingRivalJSONs.forEach(({rivalTeam,myMatchTeam,data})=>{
-    const rname=rivalTeam.name;if(!groups[rname])groups[rname]=[];
-    const rPts=scorePts(rivalTeam),myPts=scorePts(myMatchTeam);
+  if(!pendingRivalJSONs.length){
+    prev.innerHTML='<div class="match-preview"><div class="mp-warn">⚠ No s\u0027han trobat partits v\u00e0lids.</div></div>';
+    btn.disabled=true;return;
+  }
+  const scorePts=t=>(t.players||[]).reduce((s,p)=>s+p.data.score,0);
+  const rows=pendingRivalJSONs.map(({data,teams})=>{
+    const t0=teams[0],t1=teams[1];
+    const p0=scorePts(t0),p1=scorePts(t1);
     const dt=data.time?new Date(data.time).toLocaleDateString('ca-ES',{day:'numeric',month:'short'}):'—';
-    groups[rname].push({rPts,myPts,dt});
-  });
-  const rows=Object.entries(groups).map(([name,matches])=>{
-    const sub=matches.map(m=>'<div style="font-family:var(--font-m);font-size:10px;color:var(--muted);padding-left:12px">'+m.dt+' · '+(m.rPts>m.myPts?'🟢':'🔴')+' '+m.rPts+'–'+m.myPts+'</div>').join('');
-    return '<div style="padding:8px 0;border-bottom:1px solid var(--border)"><div style="font-weight:600;color:var(--blue)">'+name+'</div>'+sub+'</div>';
+    const res=p0>p1?'🟢':'🔴';
+    return '<div style="padding:8px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">'+
+      '<span style="font-family:var(--font-d);font-size:16px">'+t0.name+' '+p0+' – '+p1+' '+t1.name+'</span>'+
+      '<span style="font-family:var(--font-m);font-size:10px;color:var(--muted);margin-left:auto">'+dt+'</span>'+
+      '</div>';
   }).join('');
-  prev.innerHTML='<div class="match-preview"><div class="mp-title">'+pendingRivalJSONs.length+' PARTITS TROBATS</div>'+rows+'<div class="mp-ok" style="margin-top:8px">✓ Llest per importar</div></div>';
+  // Count how many unique teams
+  const teamNames=new Set(pendingRivalJSONs.flatMap(({teams})=>teams.map(t=>t.name)));
+  prev.innerHTML='<div class="match-preview">'+
+    '<div class="mp-title">'+pendingRivalJSONs.length+' PARTITS · '+teamNames.size+' EQUIPS DETECTATS</div>'+
+    rows+
+    '<div class="mp-ok" style="margin-top:8px">✓ S'afegiran o actualitzaran tots els equips</div>'+
+    '</div>';
   btn.disabled=false;
 }
 window.confirmRivalImport=async function(){
-  if(!pendingRivalJSONs.length)return;
+  if(!pendingRivalJSONs.length) return;
   const team={...getTeam(currentTeamId)};
-  if(!team.rivals)team.rivals=[];
-  const mp=raw=>raw.map(p=>({name:p.name,dorsal:p.dorsal,starting:p.starting,timePlayed:p.timePlayed,pts:p.data.score,val:p.data.valoration,inout:p.inOut,tla:p.data.shotsOfOneAttempted,tlm:p.data.shotsOfOneSuccessful,t2a:p.data.shotsOfTwoAttempted,t2m:p.data.shotsOfTwoSuccessful,t3a:p.data.shotsOfThreeAttempted,t3m:p.data.shotsOfThreeSuccessful,faults:p.data.faults}));
-  const scorePts=t=>(t?.players||[]).reduce((s,p)=>s+p.data.score,0);
-  pendingRivalJSONs.forEach(({data,rivalTeam,myMatchTeam,myIsLocal})=>{
-    const rname=rivalTeam.name;
-    let rival=team.rivals.find(r=>r.name===rname);
-    if(!rival){rival={id:generateId(),name:rname,color:rivalTeam.colorRgb||'#5c9aff',matches:[]};team.rivals.push(rival);}
-    const rPts=scorePts(rivalTeam),myPts=scorePts(myMatchTeam);
-    rival.matches.push({id:generateId(),date:data.time,teamScore:myPts,rivalScore:rPts,players:mp(rivalTeam.players),periodScores:getPeriodScores(data)});
+  if(!team.rivals) team.rivals=[];
+  const mp=raw=>raw.map(p=>({
+    name:p.name,dorsal:p.dorsal,starting:p.starting,timePlayed:p.timePlayed,
+    pts:p.data.score,val:p.data.valoration,inout:p.inOut,
+    tla:p.data.shotsOfOneAttempted,tlm:p.data.shotsOfOneSuccessful,
+    t2a:p.data.shotsOfTwoAttempted,t2m:p.data.shotsOfTwoSuccessful,
+    t3a:p.data.shotsOfThreeAttempted,t3m:p.data.shotsOfThreeSuccessful,
+    faults:p.data.faults
+  }));
+  const scorePts=t=>(t.players||[]).reduce((s,p)=>s+p.data.score,0);
+  pendingRivalJSONs.forEach(({data,teams})=>{
+    const t0=teams[0],t1=teams[1];
+    const p0=scorePts(t0),p1=scorePts(t1);
+    // Process both teams
+    [[t0,p0,p1],[t1,p1,p0]].forEach(([rivalTeam,rPts,oppPts])=>{
+      const rname=rivalTeam.name;
+      let rival=team.rivals.find(r=>r.name===rname);
+      if(!rival){
+        rival={id:generateId(),name:rname,color:rivalTeam.colorRgb||'#5c9aff',matches:[]};
+        team.rivals.push(rival);
+      }
+      // Avoid duplicate matches (same date + same score)
+      const alreadyExists=rival.matches.some(m=>m.date===data.time&&m.rivalScore===rPts);
+      if(!alreadyExists){
+        rival.matches.push({
+          id:generateId(),date:data.time,
+          teamScore:rPts,rivalScore:oppPts,
+          players:mp(rivalTeam.players),
+          periodScores:getPeriodScores(data)
+        });
+      }
+    });
   });
   closeModal('modal-rivalimport');
   await fsSetTeam(team);
-  toast('✓ Rivals actualitzats');
+  const nTeams=new Set(pendingRivalJSONs.flatMap(({teams})=>teams.map(t=>t.name))).size;
+  toast('✓ '+nTeams+' equips actualitzats amb '+pendingRivalJSONs.length+' partits');
   pendingRivalJSONs=[];
-  if(document.getElementById('page-rival').classList.contains('active'))renderRivalPage(currentTeamId,currentRivalId);
-  else renderRivalsList();
+  renderRivalsList();
 };
+
 window.exportPDF=function(type,teamId,matchId){const tid=teamId||currentTeamId,mid=matchId||currentMatchId;const team=getTeam(tid);if(!team)return;const color=team.color||'#c08800';const pstyle='body{font-family:Arial,sans-serif;padding:24px;color:#111;font-size:12px}table{width:100%;border-collapse:collapse}th{background:#f0c040;padding:6px 8px;font-size:10px}th:first-child{text-align:left}td{padding:5px 8px;border-bottom:1px solid #eee;text-align:center}td:first-child{text-align:left}@media print{button{display:none}}';const printBtn='<button onclick="window.print()" style="float:right;padding:8px 16px;background:#f0c040;border:none;cursor:pointer;font-weight:700;border-radius:4px">🖨 Imprimir</button>';
 if(type==='match'){const match=getMatch(tid,mid);if(!match)return;const w=window.open('','_blank');const dt=match.date?new Date(match.date).toLocaleDateString('ca-ES',{day:'numeric',month:'long',year:'numeric'}):'—';function prow(p){return '<tr><td>'+(p.starting?'●':'')+' #'+p.dorsal+' '+p.name+'</td><td>'+p.timePlayed+"'</td><td style=\"font-weight:700\">"+p.pts+'</td><td style="color:'+(p.val>=0?'#1a7a3c':'#a00')+'">'+(p.val>0?'+':'')+p.val+'</td><td style="color:'+(p.inout>=0?'#1a7a3c':'#a00')+'">'+(p.inout>0?'+':'')+p.inout+'</td><td>'+p.tlm+'/'+p.tla+'</td><td>'+p.t2m+'/'+p.t2a+'</td><td>'+p.t3m+'/'+p.t3a+'</td><td>'+p.faults+'</td></tr>';}function ptbl(pl,name,sc,c){if(!pl||!pl.length)return '';return '<h3 style="font-size:14px;margin:20px 0 8px;color:'+c+'">'+name+' — '+sc+' pts</h3><table><thead><tr><th>Jugadora</th><th>Min</th><th>PTS</th><th>Val</th><th>+/-</th><th>TL</th><th>T2</th><th>T3</th><th>F</th></tr></thead><tbody>'+pl.map(prow).join('')+'</tbody></table>';}w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+team.name+' vs '+match.rivalName+'</title><style>'+pstyle+'</style></head><body>'+printBtn+'<h1 style="font-size:20px">'+team.name+' vs '+match.rivalName+'</h1><h2 style="font-size:14px;color:#555;margin-bottom:16px">📅 '+dt+' · '+(match.teamScore>match.rivalScore?'VICTÒRIA':'DERROTA')+' '+match.teamScore+'–'+match.rivalScore+'</h2>'+ptbl(match.players,team.name,match.teamScore,color)+ptbl(match.rivalPlayers,match.rivalName,match.rivalScore,'#555')+'</body></html>');w.document.close();}
 else if(type==='season'){const players=buildPlayerStats(team,'all').sort((a,b)=>b.pts-a.pts);const w=window.open('','_blank');w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Temporada '+team.name+'</title><style>'+pstyle+'</style></head><body>'+printBtn+'<h1 style="font-size:20px">📊 Estadístiques de Temporada</h1><h2 style="font-size:13px;color:#555;margin-bottom:16px">'+team.name+' · '+(team.matches||[]).length+' Partits</h2><table><thead><tr><th>Jugadora</th><th>PJ</th><th>Min</th><th>PTS</th><th>PPP</th><th>Val</th><th>+/-</th><th>TL</th><th>T2</th><th>T3</th><th>F</th></tr></thead><tbody>'+players.map(s=>'<tr><td>#'+s.dorsal+' '+s.name+'</td><td>'+s.gp+'</td><td>'+s.min+"'</td><td style=\"font-weight:700\">"+s.pts+'</td><td>'+(s.gp>0?(s.pts/s.gp).toFixed(1):'—')+'</td><td style="color:'+(s.val>=0?'#1a7a3c':'#a00')+'">'+(s.val>0?'+':'')+s.val+'</td><td style="color:'+(s.inout>=0?'#1a7a3c':'#a00')+'">'+(s.inout>0?'+':'')+s.inout+'</td><td>'+(s.tla>0?s.tlm+'/'+s.tla+' ('+Math.round(100*s.tlm/s.tla)+'%)':'—')+'</td><td>'+(s.t2a>0?s.t2m+'/'+s.t2a+' ('+Math.round(100*s.t2m/s.t2a)+'%)':'—')+'</td><td>'+(s.t3a>0?s.t3m+'/'+s.t3a+' ('+Math.round(100*s.t3m/s.t3a)+'%)':'—')+'</td><td>'+s.faults+'</td></tr>').join('')+'</tbody></table></body></html>');w.document.close();}
