@@ -355,6 +355,14 @@ window.goTeam=function(tid){currentTeamId=tid;currentMatchId=currentPlayerName=n
 window.goMatch=function(tid,mid){currentTeamId=tid;currentMatchId=mid;const t=getTeam(tid),m=getMatch(tid,mid);updateBC([{label:'Inici',fn:goHome},{label:t.name,fn:()=>goTeam(tid)},{label:matchLabel(m),current:true}]);renderMatchDetail(m,t);showPage('page-match');};
 window.goPlayer=function(tid,pname){currentTeamId=tid;currentPlayerName=pname;const t=getTeam(tid);updateBC([{label:'Inici',fn:goHome},{label:t.name,fn:()=>goTeam(tid)},{label:pname,current:true}]);renderPlayerPage(tid,pname);showPage('page-player');};
 window.goCompare=function(){const t=getTeam(currentTeamId);updateBC([{label:'Inici',fn:goHome},{label:t.name,fn:()=>goTeam(currentTeamId)},{label:'Comparar',current:true}]);renderComparePage();showPage('page-compare');};
+window.switchTab=function(tab){
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',(i===0&&tab==='matches')||(i===1&&tab==='stats')||(i===2&&tab==='rivals')));
+  document.getElementById('tab-matches').classList.toggle('hidden',tab!=='matches');
+  document.getElementById('tab-stats').classList.toggle('hidden',tab!=='stats');
+  document.getElementById('tab-rivals').classList.toggle('hidden',tab!=='rivals');
+  if(tab==='stats')renderStats();
+  if(tab==='rivals')renderRivalsList();
+};
 window.goRival=function(tid,rid){currentTeamId=tid;currentRivalId=rid;const t=getTeam(tid),r=getRival(tid,rid);updateBC([{label:'Inici',fn:goHome},{label:t.name,fn:()=>goTeam(tid)},{label:r.name,current:true}]);renderRivalPage(tid,rid);showPage('page-rival');};
 function updateBC(items){const bc=document.getElementById('breadcrumb');Object.keys(_bcCB).forEach(k=>delete _bcCB[k]);bc.innerHTML=items.map((item,i)=>{const cls=item.current?'bc-item current':'bc-item',sep=i>0?'<span class="bc-sep">/</span>':'';if(item.fn){const k='bc_'+i;_bcCB[k]=item.fn;return sep+'<span class="'+cls+'" onclick="_bcCB[\''+k+'\']()">'+item.label+'</span>';}return sep+'<span class="'+cls+'">'+item.label+'</span>';}).join('');}
 function renderHome(){const g=document.getElementById('teamsGrid');g.innerHTML='';teams.forEach(team=>{const m=team.matches||[];const card=document.createElement('div');card.className='team-card';card.style.setProperty('--team-color',team.color||'#f0c040');card.innerHTML='<button class="team-card-del" onclick="event.stopPropagation();deleteTeam(\''+team.id+'\')">×</button><div class="team-card-icon">🏀</div><div class="team-card-name">'+team.name+'</div><div class="team-card-meta"><span>📋 '+m.length+' partits</span><span>👥 '+countPlayers(team)+' jugadores</span></div>';card.addEventListener('click',()=>goTeam(team.id));g.appendChild(card);});const add=document.createElement('button');add.className='add-team-card';add.innerHTML='<div class="plus">+</div><span>Nou Equip</span>';add.onclick=openNewTeamModal;g.appendChild(add);}
