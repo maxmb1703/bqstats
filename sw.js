@@ -1,40 +1,79 @@
-// BàsquetStats — Service Worker
-const CACHE = 'bqstats-v1';
-const ASSETS = [
+// BàsquetStats Service Worker — v2
+const CACHE_STATIC = 'bqstats-static-v2';
+const CACHE_FONTS  = 'bqstats-fonts-v2';
+
+const STATIC_ASSETS = [
   '/bqstats/',
   '/bqstats/index.html',
   '/bqstats/manifest.json',
+  '/bqstats/icon-192.png',
+  '/bqstats/icon-512.png',
 ];
 
+// Install: pre-cache app shell
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open(CACHE).then(c =>
-      Promise.allSettled(ASSETS.map(u => c.add(u).catch(() => {})))
-    )
+    caches.open(CACHE_STATIC).then(cache =>
+      Promise.allSettled(STATIC_ASSETS.map(u => cache.add(u).catch(() => {})))
+    ).then(() => self.skipWaiting())
   );
-  self.skipWaiting();
 });
 
+// Activate: clean old caches
 self.addEventListener('activate', e => {
+  const keep = [CACHE_STATIC, CACHE_FONTS];
   e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
-    )
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(k => !keep.includes(k)).map(k => caches.delete(k))))
+      .then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
+// Fetch strategy
 self.addEventListener('fetch', e => {
-  // Per a Firebase i APIs externes, sempre xarxa
-  if (e.request.url.includes('firebase') ||
-      e.request.url.includes('google') ||
-      e.request.url.includes('gstatic') ||
-      e.request.url.includes('fonts')) {
-    e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+  const url = e.request.url;
+
+  // Firebase / Google APIs — always network, no cache
+  if (url.includes('firebase') || url.includes('firestore') ||
+      url.includes('identitytoolkit') || url.includes('securetoken') ||
+      url.includes('googleapis.com/google.firestore')) {
+    e.respondWith(fetch(e.request));
     return;
   }
-  // Per a la resta: caché primer, xarxa com a fallback
-  e.respondWith(
-    caches.match(e.request).then(r => r || fetch(e.request))
-  );
+
+  // Fonts & CDN — cache first, long-lived
+  if (url.includes('fonts.googleapis') || url.includes('fonts.gstatic') ||
+      url.includes('cdnjs.cloudflare')) {
+    e.respondWith(
+      caches.open(CACHE_FONTS).then(cache =>
+        cache.match(e.request).then(cached => {
+          if (cached) return cached;
+          return fetch(e.request).then(res => {
+            cache.put(e.request, res.clone());
+            return res;
+          });
+        })
+      )
+    );
+    return;
+  }
+
+  // App shell — cache first, update in background (stale-while-revalidate)
+  if (url.includes('maxmb1703.github.io') || url.startsWith(self.location.origin)) {
+    e.respondWith(
+      caches.open(CACHE_STATIC).then(cache =>
+        cache.match(e.request).then(cached => {
+          const fetchPromise = fetch(e.request).then(res => {
+            if (res.ok) cache.put(e.request, res.clone());
+            return res;
+          }).catch(() => cached);
+          return cached || fetchPromise;
+        })
+      )
+    );
+    return;
+  }
+
+  // Default: network
+  e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
 });

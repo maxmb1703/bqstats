@@ -10,8 +10,26 @@
 <meta name="apple-mobile-web-app-title" content="BàsquetStats">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>BàsquetStats · Gestor d'Equips</title>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;600&family=DM+Mono:wght@400&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;600&family=DM+Mono:wght@400&display=swap" rel="stylesheet"></noscript>
+<script>
+// Chart.js loaded lazily only when player page is opened
+window._chartLoaded = false;
+window._chartCallbacks = [];
+function loadChartJS(cb) {
+  if (window._chartLoaded) { cb(); return; }
+  window._chartCallbacks.push(cb);
+  if (window._chartCallbacks.length > 1) return; // already loading
+  const s = document.createElement('script');
+  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js';
+  s.onload = () => { window._chartLoaded = true; window._chartCallbacks.forEach(f => f()); window._chartCallbacks = []; };
+  document.head.appendChild(s);
+}
+</script>
 <style>
 :root {
   --bg:#080810;--s1:#0f0f1a;--s2:#16161f;--s3:#1e1e2a;
@@ -650,9 +668,11 @@ function renderPlayerPage(teamId,playerName) {
   const ppp=tot.gp>0?(tot.pts/tot.gp).toFixed(1):'—';
   const cards=[[tot.pts,'PTS TOTALS',color],[ppp,'PUNTS/PARTIT',color],[tot.val>0?'+'+tot.val:tot.val,'VALORACIÓ',tot.val>=0?'var(--green)':'var(--red)'],[tot.inout>0?'+'+tot.inout:tot.inout,'+/- TOTAL',tot.inout>=0?'var(--green)':'var(--red)'],[tot.min+"'",'MINUTS','var(--dim)'],[tot.tla>0?Math.round(100*tot.tlm/tot.tla)+'%':'—','% TL','var(--dim)'],[tot.t2a>0?Math.round(100*tot.t2m/tot.t2a)+'%':'—','% T2','var(--dim)'],[tot.t3a>0?Math.round(100*tot.t3m/tot.t3a)+'%':'—','% T3','var(--dim)'],[tot.faults,'FALTES','var(--dim)']];
   document.getElementById('playerStatCards').innerHTML=cards.map(([v,l,c])=>`<div class="stat-card"><div class="stat-card-val" style="color:${c}">${v}</div><div class="stat-card-label">${l}</div></div>`).join('');
-  if(playerChartInst){playerChartInst.destroy();playerChartInst=null;}
-  const ctx=document.getElementById('playerChart').getContext('2d');
-  playerChartInst=new Chart(ctx,{type:'line',data:{labels:history.map(({match})=>`vs ${match.rivalName.split(' ')[0]}`),datasets:[{label:'Punts',data:history.map(({p})=>p.pts),borderColor:color,backgroundColor:color+'30',tension:.3,fill:true,pointBackgroundColor:color,pointRadius:4},{label:'Valoració',data:history.map(({p})=>p.val),borderColor:'#5c9aff',backgroundColor:'#5c9aff20',tension:.3,fill:false,pointBackgroundColor:'#5c9aff',pointRadius:4,borderDash:[4,3]}]},options:{responsive:true,plugins:{legend:{labels:{color:'#9090aa',font:{family:'DM Mono',size:11}}}},scales:{x:{ticks:{color:'#50506a',font:{size:10}},grid:{color:'#252535'}},y:{ticks:{color:'#50506a',font:{size:10}},grid:{color:'#252535'}}}}});
+  loadChartJS(() => {
+    if(playerChartInst){playerChartInst.destroy();playerChartInst=null;}
+    const ctx=document.getElementById('playerChart').getContext('2d');
+    playerChartInst=new Chart(ctx,{type:'line',data:{labels:history.map(({match})=>`vs ${match.rivalName.split(' ')[0]}`),datasets:[{label:'Punts',data:history.map(({p})=>p.pts),borderColor:color,backgroundColor:color+'30',tension:.3,fill:true,pointBackgroundColor:color,pointRadius:4},{label:'Valoració',data:history.map(({p})=>p.val),borderColor:'#5c9aff',backgroundColor:'#5c9aff20',tension:.3,fill:false,pointBackgroundColor:'#5c9aff',pointRadius:4,borderDash:[4,3]}]},options:{responsive:true,plugins:{legend:{labels:{color:'#9090aa',font:{family:'DM Mono',size:11}}}},scales:{x:{ticks:{color:'#50506a',font:{size:10}},grid:{color:'#252535'}},y:{ticks:{color:'#50506a',font:{size:10}},grid:{color:'#252535'}}}}});
+  }); // end loadChartJS
   document.getElementById('playerEvolutionTable').innerHTML=`<thead><tr><th>Partit</th><th>Data</th><th>Min</th><th>PTS</th><th>Val</th><th>+/−</th><th>TL</th><th>T2</th><th>T3</th><th>Faltes</th></tr></thead><tbody>${history.map(({match,p})=>{const dt=match.date?new Date(match.date).toLocaleDateString('ca-ES',{day:'numeric',month:'short'}):'—';return `<tr><td>vs ${match.rivalName}</td><td>${dt}</td><td>${p.timePlayed}'</td><td style="font-weight:700;color:${color}">${p.pts}</td><td class="${p.val>0?'stat-val-pos':p.val<0?'stat-val-neg':'stat-zero'}">${p.val>0?'+':''}${p.val}</td><td class="${p.inout>0?'stat-val-pos':p.inout<0?'stat-val-neg':'stat-zero'}">${p.inout>0?'+':''}${p.inout}</td><td>${p.tlm}/${p.tla}</td><td>${p.t2m}/${p.t2a}</td><td>${p.t3m}/${p.t3a}</td><td>${p.faults}</td></tr>`;}).join('')}</tbody>`;
 }
 
@@ -686,11 +706,10 @@ window.exportPDF = function(type,teamId,matchId) {
     w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${team.name} vs ${match.rivalName}</title><style>body{font-family:Arial,sans-serif;padding:24px;color:#111;font-size:12px}@media print{button{display:none}}</style></head><body><button onclick="window.print()" style="float:right;padding:8px 16px;background:#f0c040;border:none;cursor:pointer;font-weight:700;border-radius:4px">🖨 Imprimir</button><h1 style="font-size:20px">${team.name} vs ${match.rivalName}</h1><h2 style="font-size:14px;color:#555;margin-bottom:16px">📅 ${dt} · ${match.teamScore>match.rivalScore?'VICTÒRIA':'DERROTA'} ${match.teamScore}–${match.rivalScore}</h2>${ptbl(match.players,team.name,match.teamScore,color)}${ptbl(match.rivalPlayers,match.rivalName,match.rivalScore,'#555')}
 <script>
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/bqstats/sw.js')
-      .then(r => console.log('SW registered'))
-      .catch(e => console.log('SW error', e));
-  });
+  // Register SW immediately, don't wait for load
+  navigator.serviceWorker.register('/bqstats/sw.js')
+    .then(r => console.log('SW registered:', r.scope))
+    .catch(e => console.log('SW error:', e));
 }
 </script>
 </body></html>`);w.document.close();
@@ -699,11 +718,10 @@ if ('serviceWorker' in navigator) {
     w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Temporada ${team.name}</title><style>body{font-family:Arial,sans-serif;padding:24px;color:#111;font-size:11px}table{width:100%;border-collapse:collapse}th{background:#f0c040;padding:6px 8px;font-size:10px}th:first-child{text-align:left}td{padding:5px 8px;border-bottom:1px solid #eee;text-align:center}td:first-child{text-align:left}@media print{button{display:none}}</style></head><body><button onclick="window.print()" style="float:right;padding:8px 16px;background:#f0c040;border:none;cursor:pointer;font-weight:700;border-radius:4px">🖨 Imprimir</button><h1 style="font-size:20px">📊 Estadístiques de Temporada</h1><h2 style="font-size:13px;color:#555;margin-bottom:16px">${team.name} · ${(team.matches||[]).length} Partits</h2><table><thead><tr><th>Jugadora</th><th>PJ</th><th>Min</th><th>PTS</th><th>PPP</th><th>Val</th><th>+/-</th><th>TL</th><th>T2</th><th>T3</th><th>F</th></tr></thead><tbody>${players.map(s=>`<tr><td>#${s.dorsal} ${s.name}</td><td>${s.gp}</td><td>${s.min}'</td><td style="font-weight:700">${s.pts}</td><td>${s.gp>0?(s.pts/s.gp).toFixed(1):'—'}</td><td style="color:${s.val>=0?'#1a7a3c':'#a00'}">${s.val>0?'+':''}${s.val}</td><td style="color:${s.inout>=0?'#1a7a3c':'#a00'}">${s.inout>0?'+':''}${s.inout}</td><td>${s.tla>0?`${s.tlm}/${s.tla} (${Math.round(100*s.tlm/s.tla)}%)`:'—'}</td><td>${s.t2a>0?`${s.t2m}/${s.t2a} (${Math.round(100*s.t2m/s.t2a)}%)`:'—'}</td><td>${s.t3a>0?`${s.t3m}/${s.t3a} (${Math.round(100*s.t3m/s.t3a)}%)`:'—'}</td><td>${s.faults}</td></tr>`).join('')}</tbody></table>
 <script>
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/bqstats/sw.js')
-      .then(r => console.log('SW registered'))
-      .catch(e => console.log('SW error', e));
-  });
+  // Register SW immediately, don't wait for load
+  navigator.serviceWorker.register('/bqstats/sw.js')
+    .then(r => console.log('SW registered:', r.scope))
+    .catch(e => console.log('SW error:', e));
 }
 </script>
 </body></html>`);w.document.close();
@@ -714,11 +732,10 @@ if ('serviceWorker' in navigator) {
     w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Fitxa ${pname}</title><style>body{font-family:Arial,sans-serif;padding:24px;color:#111;font-size:12px}.cards{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:20px}.card{border:1px solid #ddd;border-radius:6px;padding:10px 16px;text-align:center;min-width:90px}.card-val{font-size:24px;font-weight:700;color:${color}}.card-lbl{font-size:9px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-top:2px}table{width:100%;border-collapse:collapse;font-size:11px}th{background:#f0c040;padding:6px 8px;font-size:10px}th:first-child{text-align:left}td{padding:5px 8px;border-bottom:1px solid #eee;text-align:center}td:first-child{text-align:left}@media print{button{display:none}}</style></head><body><button onclick="window.print()" style="float:right;padding:8px 16px;background:#f0c040;border:none;cursor:pointer;font-weight:700;border-radius:4px">🖨 Imprimir</button><h1 style="font-size:22px">#${s.dorsal} ${pname}</h1><h2 style="font-size:13px;color:#555;margin-bottom:16px">${team.name} · ${s.gp} Partits jugats</h2><div class="cards"><div class="card"><div class="card-val">${s.pts}</div><div class="card-lbl">PTS totals</div></div><div class="card"><div class="card-val">${ppp}</div><div class="card-lbl">Punts/Partit</div></div><div class="card"><div class="card-val" style="color:${s.val>=0?'#1a7a3c':'#a00'}">${s.val>0?'+':''}${s.val}</div><div class="card-lbl">Valoració</div></div><div class="card"><div class="card-val">${s.min}'</div><div class="card-lbl">Minuts</div></div><div class="card"><div class="card-val">${s.tla>0?Math.round(100*s.tlm/s.tla)+'%':'—'}</div><div class="card-lbl">% TL</div></div><div class="card"><div class="card-val">${s.t2a>0?Math.round(100*s.t2m/s.t2a)+'%':'—'}</div><div class="card-lbl">% T2</div></div><div class="card"><div class="card-val">${s.t3a>0?Math.round(100*s.t3m/s.t3a)+'%':'—'}</div><div class="card-lbl">% T3</div></div></div><table><thead><tr><th>Partit</th><th>Data</th><th>Min</th><th>PTS</th><th>Val</th><th>+/-</th><th>TL</th><th>T2</th><th>T3</th><th>F</th></tr></thead><tbody>${history.map(({match,p})=>{const dt=match.date?new Date(match.date).toLocaleDateString('ca-ES',{day:'numeric',month:'short'}):'—';return `<tr><td>vs ${match.rivalName}</td><td>${dt}</td><td>${p.timePlayed}'</td><td style="font-weight:700">${p.pts}</td><td style="color:${p.val>=0?'#1a7a3c':'#a00'}">${p.val>0?'+':''}${p.val}</td><td style="color:${p.inout>=0?'#1a7a3c':'#a00'}">${p.inout>0?'+':''}${p.inout}</td><td>${p.tlm}/${p.tla}</td><td>${p.t2m}/${p.t2a}</td><td>${p.t3m}/${p.t3a}</td><td>${p.faults}</td></tr>`;}).join('')}</tbody></table>
 <script>
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/bqstats/sw.js')
-      .then(r => console.log('SW registered'))
-      .catch(e => console.log('SW error', e));
-  });
+  // Register SW immediately, don't wait for load
+  navigator.serviceWorker.register('/bqstats/sw.js')
+    .then(r => console.log('SW registered:', r.scope))
+    .catch(e => console.log('SW error:', e));
 }
 </script>
 </body></html>`);w.document.close();
@@ -783,11 +800,10 @@ window.toast = function(msg){const el=document.getElementById('toast');el.textCo
 
 <script>
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/bqstats/sw.js')
-      .then(r => console.log('SW registered'))
-      .catch(e => console.log('SW error', e));
-  });
+  // Register SW immediately, don't wait for load
+  navigator.serviceWorker.register('/bqstats/sw.js')
+    .then(r => console.log('SW registered:', r.scope))
+    .catch(e => console.log('SW error:', e));
 }
 </script>
 </body>
