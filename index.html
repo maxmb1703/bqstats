@@ -359,16 +359,38 @@ window.goRival=function(tid,rid){currentTeamId=tid;currentRivalId=rid;const t=ge
 function updateBC(items){const bc=document.getElementById('breadcrumb');Object.keys(_bcCB).forEach(k=>delete _bcCB[k]);bc.innerHTML=items.map((item,i)=>{const cls=item.current?'bc-item current':'bc-item',sep=i>0?'<span class="bc-sep">/</span>':'';if(item.fn){const k='bc_'+i;_bcCB[k]=item.fn;return sep+'<span class="'+cls+'" onclick="_bcCB[\''+k+'\']()">'+item.label+'</span>';}return sep+'<span class="'+cls+'">'+item.label+'</span>';}).join('');}
 function renderHome(){const g=document.getElementById('teamsGrid');g.innerHTML='';teams.forEach(team=>{const m=team.matches||[];const card=document.createElement('div');card.className='team-card';card.style.setProperty('--team-color',team.color||'#f0c040');card.innerHTML='<button class="team-card-del" onclick="event.stopPropagation();deleteTeam(\''+team.id+'\')">×</button><div class="team-card-icon">🏀</div><div class="team-card-name">'+team.name+'</div><div class="team-card-meta"><span>📋 '+m.length+' partits</span><span>👥 '+countPlayers(team)+' jugadores</span></div>';card.addEventListener('click',()=>goTeam(team.id));g.appendChild(card);});const add=document.createElement('button');add.className='add-team-card';add.innerHTML='<div class="plus">+</div><span>Nou Equip</span>';add.onclick=openNewTeamModal;g.appendChild(add);}
 function renderTeamPage(team){document.getElementById('teamPageName').textContent=team.name;document.getElementById('teamPageName').style.color=team.color||'#f0c040';document.getElementById('teamPageMeta').textContent=(team.matches||[]).length+' Partits · '+countPlayers(team)+' Jugadores';renderMatches(team);}
-function renderMatches(team){const list=document.getElementById('matchList');const matches=(team.matches||[]).slice().reverse();if(!matches.length){list.innerHTML='<div class="empty-state"><div class="empty-icon">📂</div><h3>Cap Partit Importat</h3><p>Importa el JSON d\'un partit de la FCBQ.</p></div>';return;}list.innerHTML=matches.map(m=>{const won=m.teamScore>m.rivalScore,lost=m.teamScore<m.rivalScore;const cls=won?'win':lost?'loss':'draw',lbl=won?'VICTÒRIA':lost?'DERROTA':'EMPAT';const dt=m.date?new Date(m.date).toLocaleDateString('ca-ES',{day:'numeric',month:'short',year:'numeric'}):'—';return '<div class="match-item" onclick="goMatch(\''+team.id+'\',\''+m.id+'\')">'+'<div class="match-item-result"><div class="match-result-score '+cls+'">'+m.teamScore+'–'+m.rivalScore+'</div><div class="match-result-label">'+lbl+'</div></div>'+'<div class="match-item-info"><div class="match-item-rival">vs '+m.rivalName+'</div><div class="match-item-meta"><span>📅 '+dt+'</span><span>👥 '+(m.players||[]).length+' jugadores</span></div></div>'+'<button class="btn btn-ghost btn-sm" style="margin-left:auto;font-size:10px" onclick="event.stopPropagation();exportPDF(\'match\',\''+team.id+'\',\''+m.id+'\')">⬇ PDF</button>'+'<button class="match-item-del" onclick="event.stopPropagation();deleteMatch(\''+team.id+'\',\''+m.id+'\')">×</button>'+'</div>';}).join('');}
-window.switchTab=function(tab){
-  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',(i===0&&tab==='matches')||(i===1&&tab==='stats')||(i===2&&tab==='rivals')));
-  document.getElementById('tab-matches').classList.toggle('hidden',tab!=='matches');
-  document.getElementById('tab-stats').classList.toggle('hidden',tab!=='stats');
-  document.getElementById('tab-rivals').classList.toggle('hidden',tab!=='rivals');
-  if(tab==='stats')renderStats();
-  if(tab==='rivals')renderRivalsList();
-};
-function buildPlayerStats(team,matchFilter){const matches=(team.matches||[]).filter(m=>matchFilter==='all'||m.id===matchFilter);const map={};matches.forEach(match=>{(match.players||[]).forEach(p=>{if(!map[p.name])map[p.name]={name:p.name,dorsal:p.dorsal,gp:0,min:0,pts:0,val:0,inout:0,tla:0,tlm:0,t2a:0,t2m:0,t3a:0,t3m:0,faults:0};const s=map[p.name];if(p.timePlayed>0||p.pts>0)s.gp++;s.min+=p.timePlayed;s.pts+=p.pts;s.val+=p.val;s.inout+=p.inout;s.tla+=p.tla;s.tlm+=p.tlm;s.t2a+=p.t2a;s.t2m+=p.t2m;s.t3a+=p.t3a;s.t3m+=p.t3m;s.faults+=p.faults;});});return Object.values(map);}
+function renderMatches(team){
+  const list=document.getElementById('matchList');
+  const matches=(team.matches||[]).slice().reverse();
+  if(!matches.length){
+    list.innerHTML='<div class="empty-state"><div class="empty-icon">📂</div><h3>Cap Partit Importat</h3><p>Importa el JSON d\'un partit de la FCBQ.</p></div>';
+    return;
+  }
+  list.innerHTML='';
+  matches.forEach(m=>{
+    const won=m.teamScore>m.rivalScore,lost=m.teamScore<m.rivalScore;
+    const cls=won?'win':lost?'loss':'draw',lbl=won?'VICTÒRIA':lost?'DERROTA':'EMPAT';
+    const dt=m.date?new Date(m.date).toLocaleDateString('ca-ES',{day:'numeric',month:'short',year:'numeric'}):'—';
+    const item=document.createElement('div');
+    item.className='match-item';
+    item.innerHTML=
+      '<div class="match-item-result">'+
+        '<div class="match-result-score '+cls+'">'+m.teamScore+'–'+m.rivalScore+'</div>'+
+        '<div class="match-result-label">'+lbl+'</div>'+
+      '</div>'+
+      '<div class="match-item-info">'+
+        '<div class="match-item-rival">vs '+m.rivalName+'</div>'+
+        '<div class="match-item-meta"><span>📅 '+dt+'</span><span>👥 '+(m.players||[]).length+' jugadores</span></div>'+
+      '</div>'+
+      '<button class="btn btn-ghost btn-sm" style="margin-left:auto;font-size:10px">⬇ PDF</button>'+
+      '<button class="match-item-del">×</button>';
+    item.addEventListener('click', ()=>goMatch(team.id, m.id));
+    item.querySelector('.btn-ghost').addEventListener('click', e=>{e.stopPropagation();exportPDF('match',team.id,m.id);});
+    item.querySelector('.match-item-del').addEventListener('click', e=>{e.stopPropagation();deleteMatch(team.id,m.id);});
+    list.appendChild(item);
+  });
+}
+
 function renderStats(){const team=getTeam(currentTeamId);if(!team)return;const mf=document.getElementById('statsMatchFilter');const prev=mf.value;mf.innerHTML='<option value="all">Tots</option>'+(team.matches||[]).slice().reverse().map(m=>'<option value="'+m.id+'">vs '+m.rivalName+' ('+m.teamScore+'–'+m.rivalScore+')</option>').join('');if(prev)mf.value=prev;statsSortCol=document.getElementById('statsSortSel').value;let players=buildPlayerStats(team,mf.value||'all');players.sort((a,b)=>{const cm={pts:'pts',val:'val',min:'min',inout:'inout',tl:'tla',t2:'t2a',t3:'t3a',faults:'faults',gp:'gp',name:'name'};const col=cm[statsSortCol]||'pts';let av=statsSortCol==='ptsavg'?(a.gp>0?a.pts/a.gp:0):col==='name'?a.name:a[col]??0;let bv=statsSortCol==='ptsavg'?(b.gp>0?b.pts/b.gp:0):col==='name'?b.name:b[col]??0;if(typeof av==='string')return statsSortAsc?av.localeCompare(bv):bv.localeCompare(av);return statsSortAsc?av-bv:bv-av;});const body=document.getElementById('statsBody');if(!players.length){body.innerHTML='<tr><td colspan="11" style="text-align:center;padding:40px;color:var(--muted)">Cap dada</td></tr>';return;}let tp=0,tv=0,tm=0,ti=0,tla=0,tlm=0,t2a=0,t2m=0,t3a=0,t3m=0,tf=0;body.innerHTML=players.map(s=>{const ppp=s.gp>0?(s.pts/s.gp).toFixed(1):'—';const vc=s.val>0?'stat-val-pos':s.val<0?'stat-val-neg':'stat-zero';const ic=s.inout>0?'stat-val-pos':s.inout<0?'stat-val-neg':'stat-zero';const fc=s.faults>=4*s.gp?'hi':s.faults>=2*s.gp?'mid':'lo';const ini=s.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();tp+=s.pts;tv+=s.val;tm+=s.min;ti+=s.inout;tla+=s.tla;tlm+=s.tlm;t2a+=s.t2a;t2m+=s.t2m;t3a+=s.t3a;t3m+=s.t3m;tf+=s.faults;return '<tr><td><div class="player-cell"><div class="player-avatar" onclick="goPlayer(\''+currentTeamId+'\',\''+s.name+'\')">'+ini+'</div><div class="player-info"><div class="player-name" style="cursor:pointer" onclick="goPlayer(\''+currentTeamId+'\',\''+s.name+'\')">'+s.name+'</div><div class="player-dorsal">#'+s.dorsal+'</div></div></div></td><td><span class="gp-badge">'+s.gp+'</span></td><td>'+s.min+"'</td><td class=\"stat-pts\">"+s.pts+'</td><td style="font-family:var(--font-m);font-size:12px">'+ppp+'</td><td class="'+vc+'">'+(s.val>0?'+':'')+s.val+'</td><td class="'+ic+'">'+(s.inout>0?'+':'')+s.inout+'</td><td class="shot-stat">'+shotStr(s.tlm,s.tla)+'</td><td class="shot-stat">'+shotStr(s.t2m,s.t2a)+'</td><td class="shot-stat">'+shotStr(s.t3m,s.t3a)+'</td><td><span class="faults-badge '+fc+'">'+s.faults+'</span></td></tr>';}).join('')+'<tr class="totals-row"><td>TOTAL</td><td></td><td>'+tm+"'</td><td class=\"stat-pts\">"+tp+'</td><td></td><td class="'+(tv>=0?'stat-val-pos':'stat-val-neg')+'">'+(tv>=0?'+':'')+tv+'</td><td></td><td class="shot-stat">'+shotStr(tlm,tla)+'</td><td class="shot-stat">'+shotStr(t2m,t2a)+'</td><td class="shot-stat">'+shotStr(t3m,t3a)+'</td><td><span class="faults-badge lo">'+tf+'</span></td></tr>';}
 window.renderStats=renderStats;
 window.statsSortBy=function(col){if(statsSortCol===col)statsSortAsc=!statsSortAsc;else{statsSortCol=col;statsSortAsc=false;}document.getElementById('statsSortSel').value=col;renderStats();};
@@ -487,29 +509,33 @@ function readRivalFiles(files){
     r.onload=e=>{
       try{
         const data=JSON.parse(e.target.result);
-        // Find the rival team (NOT my team)
+        const jsonTeams=data.teams||[];
+        if(jsonTeams.length<2){done++;if(done===files.length)showRivalPreview();return;}
         const myTeam=getTeam(currentTeamId);
         const myName=myTeam.name.toLowerCase();
-        const jsonTeams=data.teams||[];
-        let rivalTeam=null,myMatchTeam=null,myIsLocal=false;
+        let rivalTeam=null,myMatchTeam=null,myIsLocal=false,foundMine=false;
+        // Try to find my team first
         for(let i=0;i<jsonTeams.length;i++){
           const jname=(jsonTeams[i].name||'').toLowerCase();
-          if(myName.split(/\s+/).filter(w=>w.length>2).some(w=>jname.includes(w))){myMatchTeam=jsonTeams[i];myIsLocal=i===0;rivalTeam=jsonTeams[1-i];break;}
+          if(myName.split(/\s+/).filter(w=>w.length>2).some(w=>jname.includes(w))){
+            myMatchTeam=jsonTeams[i];myIsLocal=(i===0);rivalTeam=jsonTeams[1-i];foundMine=true;break;
+          }
         }
-        // If my team not found, take the non-target rival
-        if(!rivalTeam&&jsonTeams.length>=2){
-          // If adding to existing rival, find that team
-          if(rivalImportTargetId){
-            const existRival=getRival(currentTeamId,rivalImportTargetId);
-            const exName=existRival.name.toLowerCase();
-            for(let i=0;i<jsonTeams.length;i++){
-              const jname=(jsonTeams[i].name||'').toLowerCase();
-              if(exName.split(/\s+/).filter(w=>w.length>2).some(w=>jname.includes(w))){rivalTeam=jsonTeams[i];myMatchTeam=jsonTeams[1-i];myIsLocal=i!==0;break;}
+        // If adding to existing rival, try to match that team
+        if(!foundMine&&rivalImportTargetId){
+          const existRival=getRival(currentTeamId,rivalImportTargetId);
+          const exName=(existRival.name||'').toLowerCase();
+          for(let i=0;i<jsonTeams.length;i++){
+            const jname=(jsonTeams[i].name||'').toLowerCase();
+            if(exName.split(/\s+/).filter(w=>w.length>2).some(w=>jname.includes(w))){
+              rivalTeam=jsonTeams[i];myMatchTeam=jsonTeams[1-i];foundMine=true;break;
             }
           }
         }
-        if(rivalTeam&&myMatchTeam)pendingRivalJSONs.push({data,rivalTeam,myMatchTeam,myIsLocal});
-      }catch(e){}
+        // Fallback: if my team not found at all, treat team[0] as rival (pure scouting)
+        if(!rivalTeam){rivalTeam=jsonTeams[0];myMatchTeam=jsonTeams[1];}
+        pendingRivalJSONs.push({data,rivalTeam,myMatchTeam,myIsLocal:false});
+      }catch(err){}
       done++;
       if(done===files.length)showRivalPreview();
     };
