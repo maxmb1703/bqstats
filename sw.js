@@ -1,16 +1,15 @@
-// BàsquetStats Service Worker — v2
-const CACHE_STATIC = 'bqstats-static-v2';
-const CACHE_FONTS  = 'bqstats-fonts-v2';
+// BàsquetStats Service Worker — v3
+const CACHE_STATIC = 'bqstats-static-v3';
+const CACHE_FONTS  = 'bqstats-fonts-v3';
 
 const STATIC_ASSETS = [
-  '/bqstats/',
-  '/bqstats/index.html',
-  '/bqstats/manifest.json',
-  '/bqstats/icon-192.png',
-  '/bqstats/icon-512.png',
+  '/',
+  '/index.html',
+  '/manifest.json',
+  '/icon-192.png',
+  '/icon-512.png',
 ];
 
-// Install: pre-cache app shell
 self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE_STATIC).then(cache =>
@@ -19,7 +18,6 @@ self.addEventListener('install', e => {
   );
 });
 
-// Activate: clean old caches
 self.addEventListener('activate', e => {
   const keep = [CACHE_STATIC, CACHE_FONTS];
   e.waitUntil(
@@ -29,11 +27,10 @@ self.addEventListener('activate', e => {
   );
 });
 
-// Fetch strategy
 self.addEventListener('fetch', e => {
   const url = e.request.url;
 
-  // Firebase / Google APIs — always network, no cache
+  // Firebase — sempre xarxa, mai caché
   if (url.includes('firebase') || url.includes('firestore') ||
       url.includes('identitytoolkit') || url.includes('securetoken') ||
       url.includes('googleapis.com/google.firestore')) {
@@ -41,7 +38,7 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Fonts & CDN — cache first, long-lived
+  // Fonts & CDN — caché permanent
   if (url.includes('fonts.googleapis') || url.includes('fonts.gstatic') ||
       url.includes('cdnjs.cloudflare')) {
     e.respondWith(
@@ -58,8 +55,8 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // App shell — cache first, update in background (stale-while-revalidate)
-  if (url.includes('maxmb1703.github.io') || url.startsWith(self.location.origin)) {
+  // App shell — caché primer, actualitza en segon pla
+  if (url.includes('bqstats.pages.dev') || url.startsWith(self.location.origin)) {
     e.respondWith(
       caches.open(CACHE_STATIC).then(cache =>
         cache.match(e.request).then(cached => {
@@ -74,6 +71,5 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Default: network
   e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
 });
