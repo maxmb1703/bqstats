@@ -413,7 +413,7 @@ function renderTeamPage(team){
 }
 function renderMatches(team){
   const list=document.getElementById('matchList');list.innerHTML='';
-  const matches=(team.matches||[]).slice().reverse();
+  const matches=(team.matches||[]).slice().sort((a,b)=>new Date(b.date||0)-new Date(a.date||0));
   if(!matches.length){list.innerHTML='<div class="empty-state"><div class="empty-icon">📂</div><h3>Cap Partit Importat</h3><p>Importa el JSON d\'un partit de la FCBQ.</p></div>';return;}
   matches.forEach(m=>{
     const won=m.teamScore>m.rivalScore,lost=m.teamScore<m.rivalScore;
