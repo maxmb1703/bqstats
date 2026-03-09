@@ -216,7 +216,7 @@ select{background:var(--s2);border:1px solid var(--border);color:var(--text);pad
         <button class="btn btn-ghost btn-sm" id="btnSeasonPDF" style="margin-left:auto">⬇ PDF</button>
       </div>
       <div class="stats-table-wrap"><table class="stats-table"><thead><tr>
-        <th id="th-name">Jugadora</th><th id="th-gp">PJ</th><th id="th-min">Min</th>
+        <th id="th-name">Jugadora</th><th id="th-gp">PJ</th><th id="th-min">Min</th><th id="th-minpg">M/P</th>
         <th id="th-pts">PTS</th><th id="th-ptsavg">PPP</th><th id="th-val">Val</th>
         <th id="th-inout">+/−</th><th id="th-tl">TL</th><th id="th-t2">T2</th>
         <th id="th-t3">T3</th><th id="th-faults">Faltes</th>
@@ -377,7 +377,7 @@ document.getElementById('btnSeasonPDF').onclick=()=>exportPDF('season');
 document.getElementById('btnPlayerPDF').onclick=()=>exportPDF('player');
 
 // ── Stats sort headers ──
-['name','gp','min','pts','ptsavg','val','inout','tl','t2','t3','faults'].forEach(col=>{
+['name','gp','min','minpg','pts','ptsavg','val','inout','tl','t2','t3','faults'].forEach(col=>{
   const th=document.getElementById('th-'+col);
   if(th)th.onclick=()=>{if(statsSortCol===col)statsSortAsc=!statsSortAsc;else{statsSortCol=col;statsSortAsc=false;}renderStats();};
 });
@@ -453,10 +453,10 @@ function renderStats(){
   if(prev)mf.value=prev;
   let players=buildPlayerStats(team,mf.value||'all');
   players.sort((a,b)=>{
-    const cm={pts:'pts',val:'val',min:'min',inout:'inout',tl:'tla',t2:'t2a',t3:'t3a',faults:'faults',gp:'gp',name:'name'};
+    const cm={pts:'pts',val:'val',min:'min',minpg:'min',inout:'inout',tl:'tla',t2:'t2a',t3:'t3a',faults:'faults',gp:'gp',name:'name'};
     const col=cm[statsSortCol]||'pts';
-    const av=statsSortCol==='ptsavg'?(a.gp>0?a.pts/a.gp:0):col==='name'?a.name:a[col]??0;
-    const bv=statsSortCol==='ptsavg'?(b.gp>0?b.pts/b.gp:0):col==='name'?b.name:b[col]??0;
+    const av=statsSortCol==='ptsavg'?(a.gp>0?a.pts/a.gp:0):statsSortCol==='minpg'?(a.gp>0?a.min/a.gp:0):col==='name'?a.name:a[col]??0;
+    const bv=statsSortCol==='ptsavg'?(b.gp>0?b.pts/b.gp:0):statsSortCol==='minpg'?(b.gp>0?b.min/b.gp:0):col==='name'?b.name:b[col]??0;
     if(typeof av==='string')return statsSortAsc?av.localeCompare(bv):bv.localeCompare(av);
     return statsSortAsc?av-bv:bv-av;
   });
@@ -477,7 +477,7 @@ function renderStats(){
         '<div class="player-info"><div class="player-name">'+s.name+'</div><div class="player-dorsal">#'+s.dorsal+'</div></div>'+
       '</div></td>'+
       '<td><span class="gp-badge">'+s.gp+'</span></td>'+
-      '<td>'+s.min+"'</td>"+
+      '<td>'+s.min+"'</td>"+'<td style="font-family:var(--font-m);font-size:12px">'+(s.gp>0?(s.min/s.gp).toFixed(1)+"'":'—')+'</td>'+
       '<td class="stat-pts">'+s.pts+'</td>'+
       '<td style="font-family:var(--font-m);font-size:12px">'+ppp+'</td>'+
       '<td class="'+vc+'">'+(s.val>0?'+':'')+s.val+'</td>'+
@@ -492,7 +492,7 @@ function renderStats(){
     body.appendChild(tr);
   });
   const tot=document.createElement('tr');tot.className='totals-row';
-  tot.innerHTML='<td>TOTAL</td><td></td><td>'+tm+"'</td><td class='stat-pts'>"+tp+'</td><td></td>'+
+  tot.innerHTML='<td>TOTAL</td><td></td><td>'+tm+"'</td><td></td><td class='stat-pts'>"+tp+'</td><td></td>'+
     '<td class="'+(tv>=0?'stat-val-pos':'stat-val-neg')+'">'+(tv>=0?'+':'')+tv+'</td><td></td>'+
     '<td class="shot-stat">'+shotStr(tlm,tla)+'</td><td class="shot-stat">'+shotStr(t2m,t2a)+'</td>'+
     '<td class="shot-stat">'+shotStr(t3m,t3a)+'</td><td><span class="faults-badge lo">'+tf+'</span></td>';
