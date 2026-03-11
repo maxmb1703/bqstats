@@ -159,6 +159,20 @@ select{background:var(--s2);border:1px solid var(--border);color:var(--text);pad
 .mp-ok{margin-top:10px;padding:8px 10px;background:rgba(61,214,140,.08);border:1px solid rgba(61,214,140,.2);border-radius:4px;font-family:var(--font-m);font-size:11px;color:var(--green)}
 #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--s3);border:1px solid var(--border2);color:var(--text);padding:10px 20px;border-radius:40px;font-family:var(--font-m);font-size:12px;letter-spacing:1px;transition:transform .3s cubic-bezier(.34,1.56,.64,1);z-index:999;pointer-events:none;white-space:nowrap}
 #toast.show{transform:translateX(-50%) translateY(0)}
+
+/* ── Light theme ── */
+body.light{
+  --bg:#f0f0f5;--s1:#ffffff;--s2:#f7f7fc;--s3:#eeeef5;
+  --border:#d8d8e8;--border2:#c8c8da;--text:#111120;
+  --dim:#333345;--muted:#66667a;--gold:#b8860b;--gold2:#a07000;
+  --green:#1a7a3c;--red:#cc2222;--blue:#1a5cb0;
+}
+body.light .stats-table tbody tr:hover{background:rgba(0,0,0,.03)}
+body.light .team-card:hover{border-color:var(--border2)}
+body.light .match-item:hover{border-color:var(--border2)}
+body.light select{color:var(--text)}
+body.light .btn-primary{background:var(--gold);color:#fff}
+body.light .btn-primary:hover{background:var(--gold2)}
 </style>
 </head>
 <body>
@@ -177,6 +191,7 @@ select{background:var(--s2);border:1px solid var(--border);color:var(--text);pad
 <nav>
   <div class="nav-logo" id="navLogo">🏀 <span>Bàsquet</span>Stats</div>
   <div class="breadcrumb" id="breadcrumb"><span class="bc-item current">Inici</span></div>
+  <button id="themeToggle" onclick="toggleTheme()" style="background:none;border:1px solid var(--border);border-radius:20px;padding:4px 12px;cursor:pointer;font-family:var(--font-m);font-size:11px;color:var(--dim);letter-spacing:1px;transition:all .2s;margin-right:8px" title="Canviar tema">🌙 FOSC</button>
   <div class="sync-badge"><div class="sync-dot" id="syncDot"></div></div>
   <div class="nav-user">
     <div id="navAvatar" class="nav-avatar-placeholder">?</div>
@@ -749,6 +764,20 @@ function exportPDF(type,teamId,matchId){
     w.document.close();
   }
 }
+
+// ── Theme ──
+function applyTheme(theme){
+  document.body.classList.toggle('light', theme==='light');
+  const btn=document.getElementById('themeToggle');
+  if(btn)btn.textContent=theme==='light'?'🌑 FOSC':'☀️ CLAR';
+  localStorage.setItem('theme',theme);
+}
+function toggleTheme(){
+  const isLight=document.body.classList.contains('light');
+  applyTheme(isLight?'dark':'light');
+}
+// Apply saved theme on load
+applyTheme(localStorage.getItem('theme')||'dark');
 
 // ── Toast ──
 let toastTimer;
